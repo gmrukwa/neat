@@ -17,6 +17,7 @@
 import os.path
 import shutil
 import random as rng
+import numpy.random as nprng
 import pickle
 from cStringIO import StringIO
 import sys
@@ -62,11 +63,12 @@ def _get_fun_help(fun):
     return helpstr.getvalue()
 
 
-def cache_results(cache_path=os.path.join('.', 'cache'), with_rng=True,
-                  debug=False):
+def cache_results(cache_path=os.path.join('.', 'cache'), function_tag='f',
+                  with_rng=True, debug=False):
     """Creates decorator for caching results of a function calls on disc
 
     :param cache_path: path, under which cache will be created
+    :param function_tag: if defined, uses to separate function caching domains
     :param with_rng: if true, checks rng state and uses its value to save
     results with randomization
     :param debug: if true some debug info is printed
@@ -99,18 +101,17 @@ def cache_results(cache_path=os.path.join('.', 'cache'), with_rng=True,
                     return _hs(acc)
                 return str(hex(hash(str(arg))))
 
-            fun_hash = _hs(_get_fun_help(fun))
             _log("Hashed a function.\n")
             args_hash = _hs(args)
             _log("Hashed *args.\n")
             kwargs_hash = _hs(kwargs)
             _log("Hashed **kwargs.\n")
             if with_rng:
-                rng_hash = _hs(rng.getstate())
+                rng_hash = _hs(rng.getstate()) + _hs(nprng.get_state())
             else:
                 rng_hash = ""
             _log("Hashed rng.\n")
-            path = os.path.join(cache_path, fun_hash, args_hash)
+            path = os.path.join(cache_path, function_tag, args_hash)
             if with_rng:
                 path = os.path.join(path, rng_hash)
             _log("Searching for path %s...\n" % path)
@@ -125,7 +126,9 @@ def cache_results(cache_path=os.path.join('.', 'cache'), with_rng=True,
                 _log("Found existing results. Loading... \n")
                 if with_rng:
                     with open(randomseed_path, 'r') as cache_file:
-                        rng.setstate(pickle.load(cache_file))
+                        normal, numpied = pickle.load(cache_file)
+                        rng.setstate(normal)
+                        nprng.set_state(numpied)
                 with open(printout_path, 'r') as cache_file:
                     print cache_file.read()
                 with open(cachefile_path, 'r') as cache_file:
@@ -140,7 +143,8 @@ def cache_results(cache_path=os.path.join('.', 'cache'), with_rng=True,
                     cache_file.writelines(captured_output)
                 if with_rng:
                     with open(randomseed_path, 'w') as cache_file:
-                        pickle.dump(rng.getstate(), cache_file)
+                        dump = (rng.getstate(), nprng.get_state())
+                        pickle.dump(dump, cache_file)
                 return res
         return _cacher
     return _adjusted_cacher

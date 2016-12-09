@@ -17,6 +17,7 @@
 import unittest
 import os
 import random as rng
+import numpy.random as nprng
 import sys
 import caching.caching as caching
 
@@ -193,6 +194,49 @@ class CacherTestCase(unittest.TestCase):
                                      "after rng reset.")
         self.assertEqual(state2, rep_state2, "State of rng after second call "
                                              "after rng reset is different.")
+
+    # pylint: disable=too-many-locals
+    # Those variables are necessary to check results
+    def test_numpy_rng_preservation(self):
+        """Tests whether caching is rng-sensible"""
+
+        @caching.cache_results(cache_path=CACHE_PATH)
+        def _any_cached_function(arg, kwarg=None):
+            return arg, kwarg, nprng.rand()
+
+        arg = 1
+        nprng.seed(0)
+        a1, k1, r1 = _any_cached_function(arg)
+        state1 = nprng.get_state()
+        a2, k2, r2 = _any_cached_function(arg)
+        state2 = nprng.get_state()
+        self.assertEqual(a1, a2, "Return arg changed.")
+        self.assertEqual(k1, k2, "Returned kwarg changed.")
+        self.assertNotEqual(r1, r2, "Returned the same random.")
+
+        nprng.seed(0)
+        rep_a1, rep_k1, rep_r1 = _any_cached_function(arg)
+        rep_state1 = nprng.get_state()
+        rep_a2, rep_k2, rep_r2 = _any_cached_function(arg)
+        rep_state2 = nprng.get_state()
+        self.assertEqual(a1, rep_a1, "Return arg changed after rng reset.")
+        self.assertEqual(k1, rep_k1,
+                         "Return kwarg changed after rng reset.")
+        self.assertEqual(r1, rep_r1,
+                         "Returned different cached random after "
+                         "rng reset.")
+        self.assertEqual(str(state1), str(rep_state1),
+                         "State of rng after first call "
+                         "after reset is different.")
+        self.assertEqual(rep_a1, rep_a2, "Return arg2 changed after rng "
+                                         "reset.")
+        self.assertEqual(rep_k1, rep_k2, "Return kwarg2 changed after rng "
+                                         "reset.")
+        self.assertEqual(r2, rep_r2, "Returned different cached random2 "
+                                     "after rng reset.")
+        self.assertEqual(str(state2), str(rep_state2),
+                         "State of rng after second call "
+                         "after rng reset is different.")
 
     def test_stdout_preservation(self):
         """Tests whether stdout has been captured and printed"""
