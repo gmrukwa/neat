@@ -14,6 +14,7 @@
 
 """Provides decorator for long-lasting function result caching purposes"""
 
+import functools
 import os.path
 import shutil
 import random as rng
@@ -82,6 +83,7 @@ def cache_results(cache_path=os.path.join('.', 'cache'), function_tag='f',
     def _adjusted_cacher(fun):
         _log("Decorating a function...\n")
 
+        @functools.wraps(fun)
         def _cacher(*args, **kwargs):
             _log("Using a decorated function...\n")
 
@@ -146,7 +148,6 @@ def cache_results(cache_path=os.path.join('.', 'cache'), function_tag='f',
                         dump = (rng.getstate(), nprng.get_state())
                         pickle.dump(dump, cache_file)
                 return res
-        _cacher.__name__ = fun.__name__
         return _cacher
     return _adjusted_cacher
 
