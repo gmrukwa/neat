@@ -146,6 +146,7 @@ def cache_results(cache_path=os.path.join('.', 'cache'), function_tag='f',
                         dump = (rng.getstate(), nprng.get_state())
                         pickle.dump(dump, cache_file)
                 return res
+        _cacher.__name__ = fun.__name__
         return _cacher
     return _adjusted_cacher
 
